@@ -28,7 +28,7 @@ variable "scan_on_push" {
 variable "max_tagged_images" {
   description = "Number of most recent tagged images to keep per repository."
   type        = number
-  default     = 20
+  default     = 10
 }
 
 variable "untagged_expiry_days" {

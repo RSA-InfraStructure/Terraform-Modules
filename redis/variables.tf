@@ -19,10 +19,21 @@ variable "allowed_security_group_ids" {
   default     = []
 }
 
-variable "engine_version" {
-  description = "Redis OSS engine version."
+variable "engine" {
+  description = "Cache engine: valkey (default, about 20% cheaper) or redis."
   type        = string
-  default     = "7.1"
+  default     = "valkey"
+
+  validation {
+    condition     = contains(["valkey", "redis"], var.engine)
+    error_message = "engine must be valkey or redis."
+  }
+}
+
+variable "engine_version" {
+  description = "Engine version. Must match the engine: for example 8.0 or 7.2 for valkey, 7.1 for redis."
+  type        = string
+  default     = "8.0"
 }
 
 variable "node_type" {
