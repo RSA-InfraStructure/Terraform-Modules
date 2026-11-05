@@ -2,6 +2,7 @@ data "aws_region" "current" {}
 
 locals {
   cluster_name = element(split("/", var.cluster_arn), 1)
+  service_name = var.name
 
   container_health_check_command = coalesce(
     var.container_health_check_command,
@@ -229,7 +230,10 @@ resource "aws_vpc_security_group_egress_rule" "out" {
 # Service
 ################################################################################
 
-resource "aws_ecs_service" "this" {
+# Default: Terraform owns the running image (task_definition follows the plan).
+resource "aws_ecs_service" "managed" {
+  count = var.image_managed_by_pipeline ? 0 : 1
+
   name            = var.name
   cluster         = var.cluster_arn
   task_definition = aws_ecs_task_definition.this.arn
@@ -267,6 +271,54 @@ resource "aws_ecs_service" "this" {
   depends_on = [aws_lb_listener_rule.this]
 }
 
+# image_managed_by_pipeline = true: the app pipeline registers new task
+# definition revisions and updates the service. Terraform creates the service
+# and its first revision, then leaves task_definition alone so a later apply
+# never reverts a deployment. It still manages everything else on the service.
+resource "aws_ecs_service" "pipeline" {
+  count = var.image_managed_by_pipeline ? 1 : 0
+
+  name            = var.name
+  cluster         = var.cluster_arn
+  task_definition = aws_ecs_task_definition.this.arn
+  desired_count   = var.desired_count
+
+  capacity_provider_strategy {
+    capacity_provider = var.use_spot ? "FARGATE_SPOT" : "FARGATE"
+    weight            = 1
+  }
+
+  network_configuration {
+    subnets          = var.subnet_ids
+    security_groups  = [aws_security_group.this.id]
+    assign_public_ip = var.assign_public_ip
+  }
+
+  load_balancer {
+    target_group_arn = aws_lb_target_group.this.arn
+    container_name   = var.name
+    container_port   = var.container_port
+  }
+
+  health_check_grace_period_seconds  = var.health_check_grace_period_seconds
+  deployment_minimum_healthy_percent = 100
+  deployment_maximum_percent         = 200
+  propagate_tags                     = "SERVICE"
+
+  deployment_circuit_breaker {
+    enable   = true
+    rollback = true
+  }
+
+  tags = merge(var.tags, { Name = var.name })
+
+  depends_on = [aws_lb_listener_rule.this]
+
+  lifecycle {
+    ignore_changes = [task_definition]
+  }
+}
+
 ################################################################################
 # Autoscaling (optional)
 ################################################################################
@@ -276,9 +328,11 @@ resource "aws_appautoscaling_target" "this" {
 
   service_namespace  = "ecs"
   scalable_dimension = "ecs:service:DesiredCount"
-  resource_id        = "service/${local.cluster_name}/${aws_ecs_service.this.name}"
+  resource_id        = "service/${local.cluster_name}/${local.service_name}"
   min_capacity       = var.min_capacity
   max_capacity       = var.max_capacity
+
+  depends_on = [aws_ecs_service.managed, aws_ecs_service.pipeline]
 }
 
 resource "aws_appautoscaling_policy" "cpu" {
