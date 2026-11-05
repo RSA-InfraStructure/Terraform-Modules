@@ -42,6 +42,21 @@ module "api" {
 }
 ```
 
+## Deploying new versions from the app pipeline
+
+Set `image_managed_by_pipeline = true`. Terraform then creates the service with `image` as the **first** (bootstrap) image and ignores which task definition the service runs afterwards, so an infra apply never reverts a deployment. There is no PR per deployment: the app pipeline does it.
+
+What the pipeline does for each deploy (with a narrow, per-environment OIDC role):
+
+1. `aws ecs describe-task-definition` for the **family** (`<name>`) to get its **latest** revision. Use the latest revision, not the one the service runs, so config changes Terraform made since the last deploy (variables, secrets, limits) are kept.
+2. Replace only the container `image` with `<repo>:<git SHA>`, and register the result as a new revision.
+3. `aws ecs update-service` to that revision, then `aws ecs wait services-stable`. The circuit breaker rolls back by itself if the new tasks fail their health checks.
+4. Roll back by pointing the service at the previous revision.
+
+The deploy role needs only `ecs:DescribeTaskDefinition`, `ecs:RegisterTaskDefinition`, `ecs:UpdateService`, `ecs:DescribeServices` and `iam:PassRole` for the `execution_role_arn` and `task_role_arn` outputs.
+
+Infra changes (cpu, memory, variables, secrets, networking) still go through Terraform. An apply registers a new revision with the bootstrap image; the next deploy replaces that image with the new SHA, so nothing is lost.
+
 ## Notes
 
 - The default container health check runs `curl` inside the image. If your image has no `curl`, set `container_health_check_command`.

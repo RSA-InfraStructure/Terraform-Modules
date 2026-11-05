@@ -193,6 +193,12 @@ variable "log_retention_days" {
   default     = 14
 }
 
+variable "image_managed_by_pipeline" {
+  description = "When true, the app pipeline deploys new versions (new task definition revisions) and Terraform ignores which task definition the service runs. The image input is then only the first, bootstrap image. When false, Terraform owns the running image."
+  type        = bool
+  default     = false
+}
+
 variable "tags" {
   description = "Tags applied to all resources."
   type        = map(string)

@@ -1,6 +1,6 @@
 output "service_name" {
   description = "Name of the ECS service."
-  value       = aws_ecs_service.this.name
+  value       = try(aws_ecs_service.managed[0].name, aws_ecs_service.pipeline[0].name)
 }
 
 output "task_definition_arn" {
