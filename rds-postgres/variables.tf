@@ -84,6 +84,12 @@ variable "kms_key_id" {
   default     = null
 }
 
+variable "master_user_secret_kms_key_id" {
+  description = "KMS key ARN for the generated master password in Secrets Manager. Null uses the AWS managed Secrets Manager key."
+  type        = string
+  default     = null
+}
+
 variable "apply_immediately" {
   description = "Apply changes immediately instead of in the maintenance window."
   type        = bool

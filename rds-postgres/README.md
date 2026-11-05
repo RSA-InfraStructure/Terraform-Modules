@@ -44,6 +44,7 @@ Developers reach it with SSM port forwarding through the `ssm-bastion` module, n
 | `deletion_protection` | Block deletion | `true` |
 | `skip_final_snapshot` | Skip the final snapshot | `false` |
 | `kms_key_id` | Custom storage key | `null` |
+| `master_user_secret_kms_key_id` | Key for the generated password in Secrets Manager (use the environment's `kms` key) | `null` |
 
 ## Outputs
 
