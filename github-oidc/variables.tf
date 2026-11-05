@@ -12,13 +12,15 @@ variable "create_oidc_provider" {
 variable "roles" {
   description = <<-EOT
     Roles that GitHub Actions can assume, keyed by short name (for example "infra-staging").
-    Each role trusts exactly one workflow context: either a GitHub environment or a branch. Set one of them, never both.
+    Each role trusts exactly one workflow context: a GitHub environment, a branch, or pull request runs. Set exactly one of environment, branch or pull_request.
+    Give a pull_request role only minimal, read-only permissions: any pull request in the repository can run a workflow that assumes it.
     The prod role should trust only the "prod" GitHub environment, so it cannot be assumed without that environment's approval.
   EOT
   type = map(object({
     github_repo          = string
     environment          = optional(string)
     branch               = optional(string)
+    pull_request         = optional(bool, false)
     policy_json          = optional(string)
     managed_policy_arns  = optional(list(string), [])
     max_session_duration = optional(number, 3600)
@@ -31,8 +33,8 @@ variable "roles" {
   }
 
   validation {
-    condition     = alltrue([for r in values(var.roles) : (r.environment != null) != (r.branch != null)])
-    error_message = "Set exactly one of environment or branch on every role."
+    condition     = alltrue([for r in values(var.roles) : length([for set in [r.environment != null, r.branch != null, r.pull_request] : set if set]) == 1])
+    error_message = "Set exactly one of environment, branch or pull_request on every role."
   }
 
   validation {

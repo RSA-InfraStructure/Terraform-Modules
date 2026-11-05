@@ -8,9 +8,10 @@ Lets GitHub Actions deploy to AWS **without stored keys**. GitHub proves who is 
 - One IAM role per entry in `roles`. Each role trusts exactly one workflow context:
   - `environment`: `repo:<owner>/<repo>:environment:<env>`
   - or `branch`: `repo:<owner>/<repo>:ref:refs/heads/<branch>`
+  - or `pull_request = true`: `repo:<owner>/<repo>:pull_request`, for checks that run on pull requests. **Any** pull request in the repository can assume such a role, so give it minimal read-only permissions (for example, reading one secret).
 - Optional inline policy and managed policy attachments per role.
 
-There are no wildcards in the trust. Setting both `environment` and `branch`, or neither, is rejected.
+There are no wildcards in the trust. Setting more than one of `environment`, `branch` and `pull_request`, or none, is rejected.
 
 ## Usage
 

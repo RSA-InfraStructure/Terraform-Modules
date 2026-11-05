@@ -8,7 +8,11 @@ locals {
     for k, r in var.roles : k => (
       r.environment != null
       ? "repo:${r.github_repo}:environment:${r.environment}"
-      : "repo:${r.github_repo}:ref:refs/heads/${r.branch}"
+      : (
+        r.pull_request
+        ? "repo:${r.github_repo}:pull_request"
+        : "repo:${r.github_repo}:ref:refs/heads/${r.branch}"
+      )
     )
   }
 
