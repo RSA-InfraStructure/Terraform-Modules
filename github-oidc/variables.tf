@@ -17,6 +17,7 @@ variable "roles" {
   EOT
   type = map(object({
     github_repo          = string
+    subject_prefix       = optional(string)
     environment          = optional(string)
     branch               = optional(string)
     policy_json          = optional(string)
@@ -28,6 +29,11 @@ variable "roles" {
   validation {
     condition     = alltrue([for r in values(var.roles) : can(regex("^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$", r.github_repo))])
     error_message = "github_repo must look like owner/repository, for example RSA-InfraStructure/infra."
+  }
+
+  validation {
+    condition     = alltrue([for r in values(var.roles) : r.subject_prefix == null ? true : can(regex("^repo:[A-Za-z0-9_.-]+(@[0-9]+)?/[A-Za-z0-9_.-]+(@[0-9]+)?$", r.subject_prefix))])
+    error_message = "subject_prefix must look like repo:owner/repository or repo:owner@123/repository@456 (GitHub immutable subject claims)."
   }
 
   validation {
