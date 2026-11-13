@@ -1,4 +1,8 @@
 locals {
+  # What the token subject starts with. GitHub repositories that use immutable subject claims need the
+  # form repo:<owner>@<owner id>/<repo>@<repo id>, so a role can override it with subject_prefix.
+  subject_base = { for k, r in var.roles : k => coalesce(r.subject_prefix, "repo:${r.github_repo}") }
+
   github_oidc_url = "https://token.actions.githubusercontent.com"
   oidc_host       = "token.actions.githubusercontent.com"
 
@@ -7,8 +11,8 @@ locals {
   subjects = {
     for k, r in var.roles : k => (
       r.environment != null
-      ? "repo:${r.github_repo}:environment:${r.environment}"
-      : "repo:${r.github_repo}:ref:refs/heads/${r.branch}"
+      ? "${local.subject_base[k]}:environment:${r.environment}"
+      : "${local.subject_base[k]}:ref:refs/heads/${r.branch}"
     )
   }
 

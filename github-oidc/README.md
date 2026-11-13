@@ -70,7 +70,27 @@ jobs:
 | `roles` | Map of roles (see above) | `{}` |
 | `tags` | Tags on all resources | `{}` |
 
-Each role takes `github_repo`, exactly one of `environment` or `branch`, and optionally `policy_json`, `managed_policy_arns` and `max_session_duration` (default 3600).
+Each role takes `github_repo`, exactly one of `environment` or `branch`, and optionally `policy_json`, `managed_policy_arns`, `max_session_duration` (default 3600) and `subject_prefix`.
+
+### Repositories with immutable subject claims
+
+Newer GitHub repositories issue tokens whose subject contains the owner and repository IDs, for example `repo:my-org@123456/my-repo@789012:environment:prod`. A role that trusts `repo:my-org/my-repo:...` then fails with "Not authorized to perform sts:AssumeRoleWithWebIdentity". Check what your repository uses:
+
+```
+gh api repos/<owner>/<repo>/actions/oidc/customization/sub
+```
+
+If `use_immutable_subject` is `true`, set `subject_prefix` to the returned `sub_claim_prefix`:
+
+```hcl
+roles = {
+  infra-dev = {
+    github_repo    = "my-org/my-repo"
+    subject_prefix = "repo:my-org@123456/my-repo@789012"
+    environment    = "dev"
+  }
+}
+```
 
 ## Outputs
 
