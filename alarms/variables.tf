@@ -15,6 +15,12 @@ variable "alb_arn_suffix" {
   default     = null
 }
 
+variable "enable_alb_alarms" {
+  description = "Create the load balancer alarms. Set true or false explicitly when alb_arn_suffix comes from a load balancer created in the same apply, so the plan can count the alarms before the load balancer exists. Null (default) means: create them when alb_arn_suffix is set."
+  type        = bool
+  default     = null
+}
+
 variable "target_group_arn_suffixes" {
   description = "Map of service name to target group ARN suffix (ecs-service output), for the unhealthy host alarms. Needs alb_arn_suffix."
   type        = map(string)
