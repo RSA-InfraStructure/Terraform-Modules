@@ -70,7 +70,11 @@ jobs:
 | `roles` | Map of roles (see above) | `{}` |
 | `tags` | Tags on all resources | `{}` |
 
-Each role takes `github_repo`, exactly one of `environment` or `branch`, and optionally `policy_json`, `managed_policy_arns`, `max_session_duration` (default 3600) and `subject_prefix`.
+Each role takes `github_repo`, exactly one of `environment` or `branch`, and optionally `policy_json`, `inline_policy`, `managed_policy_arns`, `max_session_duration` (default 3600) and `subject_prefix`.
+
+### Policy built from resources created in the same apply
+
+If `policy_json` is built from resources that do not exist yet (for example the state bucket from the `state-backend` module), Terraform cannot tell at plan time whether it is null and fails with `Invalid for_each argument`. Set `inline_policy = true` on those roles (or `false` for roles that only use managed policies). With `inline_policy` unset the old rule applies: a role has an inline policy when `policy_json` is set.
 
 ### Repositories with immutable subject claims
 
