@@ -2,8 +2,12 @@
 # Hosted zone
 ################################################################################
 
+locals {
+  route53 = var.validation_mode == "route53"
+}
+
 resource "aws_route53_zone" "this" {
-  count = var.create_zone ? 1 : 0
+  count = local.route53 && var.create_zone ? 1 : 0
 
   name = var.zone_name
 
@@ -11,14 +15,15 @@ resource "aws_route53_zone" "this" {
 }
 
 data "aws_route53_zone" "existing" {
-  count = var.create_zone ? 0 : 1
+  count = local.route53 && !var.create_zone ? 1 : 0
 
   name         = var.zone_name
   private_zone = false
 }
 
 locals {
-  zone_id = var.create_zone ? aws_route53_zone.this[0].zone_id : data.aws_route53_zone.existing[0].zone_id
+  # null when validation_mode is external (no Route 53 zone is used)
+  zone_id = local.route53 ? (var.create_zone ? aws_route53_zone.this[0].zone_id : data.aws_route53_zone.existing[0].zone_id) : null
 }
 
 ################################################################################
@@ -56,7 +61,7 @@ locals {
 }
 
 resource "aws_route53_record" "validation" {
-  for_each = local.validation_records
+  for_each = local.route53 ? local.validation_records : {}
 
   zone_id         = local.zone_id
   name            = each.value.name
@@ -66,13 +71,15 @@ resource "aws_route53_record" "validation" {
   allow_overwrite = true
 }
 
+# In route53 mode this always waits for the certificate. In external mode it exists
+# only when wait_for_validation is true (after the validation record was added by hand).
 resource "aws_acm_certificate_validation" "this" {
-  for_each = aws_acm_certificate.this
+  for_each = { for k, c in aws_acm_certificate.this : k => c if local.route53 || var.wait_for_validation }
 
   certificate_arn = each.value.arn
-  validation_record_fqdns = [
+  validation_record_fqdns = local.route53 ? [
     for k, r in aws_route53_record.validation : r.fqdn if startswith(k, "${each.key}|")
-  ]
+  ] : null
 }
 
 ################################################################################
