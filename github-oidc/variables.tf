@@ -21,6 +21,7 @@ variable "roles" {
     environment          = optional(string)
     branch               = optional(string)
     policy_json          = optional(string)
+    inline_policy        = optional(bool)
     managed_policy_arns  = optional(list(string), [])
     max_session_duration = optional(number, 3600)
   }))

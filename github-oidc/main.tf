@@ -22,7 +22,11 @@ locals {
     }
   ]...)
 
-  inline_roles = { for k, r in var.roles : k => r if r.policy_json != null }
+  # Which roles get an inline policy. When inline_policy is set (true or false) the answer does not
+  # depend on the value of policy_json, so the role keys are known at plan time even when the policy
+  # is built from resources created in the same apply. When it is null, the old rule applies:
+  # a role has an inline policy when policy_json is set.
+  inline_roles = { for k, r in var.roles : k => r if r.inline_policy == null ? r.policy_json != null : r.inline_policy }
 }
 
 ################################################################################
