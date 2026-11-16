@@ -68,8 +68,15 @@ resource "aws_sns_topic_subscription" "email" {
 # Load balancer
 ################################################################################
 
+locals {
+  # Whether to create the load balancer alarms. When enable_alb_alarms is set (true or false) the
+  # answer does not depend on alb_arn_suffix, so it is known at plan time even when the load
+  # balancer is created in the same apply. When it is null the old behaviour applies.
+  alb_alarms = var.enable_alb_alarms == null ? var.alb_arn_suffix != null : var.enable_alb_alarms
+}
+
 resource "aws_cloudwatch_metric_alarm" "alb_5xx" {
-  count = var.alb_arn_suffix == null ? 0 : 1
+  count = local.alb_alarms ? 1 : 0
 
   alarm_name          = "${var.name}-alb-5xx"
   alarm_description   = "The load balancer itself returned 5xx errors"
@@ -91,7 +98,7 @@ resource "aws_cloudwatch_metric_alarm" "alb_5xx" {
 }
 
 resource "aws_cloudwatch_metric_alarm" "unhealthy_hosts" {
-  for_each = var.alb_arn_suffix == null ? {} : var.target_group_arn_suffixes
+  for_each = local.alb_alarms ? var.target_group_arn_suffixes : {}
 
   alarm_name          = "${var.name}-${each.key}-unhealthy"
   alarm_description   = "${each.key} has unhealthy targets"
