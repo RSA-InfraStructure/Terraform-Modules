@@ -9,8 +9,14 @@ variable "vpc_id" {
 }
 
 variable "subnet_id" {
-  description = "Private subnet for the instance. It needs a route to the SSM service (NAT gateway or VPC endpoints for ssm, ssmmessages and ec2messages)."
+  description = "Subnet for the instance. It needs a route to the SSM service: a NAT gateway or VPC endpoints for ssm, ssmmessages and ec2messages (private subnet), or an internet gateway route with associate_public_ip_address = true (public subnet)."
   type        = string
+}
+
+variable "associate_public_ip_address" {
+  description = "Give the instance a public IPv4 address so it reaches SSM through an internet gateway in a public subnet, without NAT or VPC endpoints. The security group still has no inbound rules. Costs about 3.65 USD a month for the address."
+  type        = bool
+  default     = false
 }
 
 variable "instance_type" {
