@@ -34,6 +34,28 @@ data "aws_iam_policy_document" "topic_key" {
       values   = [data.aws_caller_identity.current.account_id]
     }
   }
+
+  # AWS Budgets (budget alerts) must be able to use the key to publish to an encrypted topic.
+  dynamic "statement" {
+    for_each = var.allow_budgets_publish ? [1] : []
+
+    content {
+      sid       = "AllowBudgetsToPublish"
+      actions   = ["kms:Decrypt", "kms:GenerateDataKey*"]
+      resources = ["*"]
+
+      principals {
+        type        = "Service"
+        identifiers = ["budgets.amazonaws.com"]
+      }
+
+      condition {
+        test     = "StringEquals"
+        variable = "aws:SourceAccount"
+        values   = [data.aws_caller_identity.current.account_id]
+      }
+    }
+  }
 }
 
 resource "aws_kms_key" "topic" {
@@ -54,6 +76,68 @@ resource "aws_sns_topic" "this" {
   kms_master_key_id = aws_kms_key.topic.arn
 
   tags = merge(var.tags, { Name = "${var.name}-alarms" })
+}
+
+# Setting a topic policy replaces the default one, so the default statement is repeated here.
+# It keeps CloudWatch alarms and the account's own principals working as before.
+data "aws_iam_policy_document" "topic" {
+  count = var.allow_budgets_publish ? 1 : 0
+
+  statement {
+    sid = "DefaultAccountAccess"
+    actions = [
+      "SNS:GetTopicAttributes",
+      "SNS:SetTopicAttributes",
+      "SNS:AddPermission",
+      "SNS:RemovePermission",
+      "SNS:DeleteTopic",
+      "SNS:Subscribe",
+      "SNS:ListSubscriptionsByTopic",
+      "SNS:Publish",
+    ]
+    resources = [aws_sns_topic.this.arn]
+
+    principals {
+      type        = "AWS"
+      identifiers = ["*"]
+    }
+
+    condition {
+      test     = "StringEquals"
+      variable = "AWS:SourceOwner"
+      values   = [data.aws_caller_identity.current.account_id]
+    }
+  }
+
+  statement {
+    sid       = "AllowBudgetsToPublish"
+    actions   = ["SNS:Publish"]
+    resources = [aws_sns_topic.this.arn]
+
+    principals {
+      type        = "Service"
+      identifiers = ["budgets.amazonaws.com"]
+    }
+
+    condition {
+      test     = "StringEquals"
+      variable = "aws:SourceAccount"
+      values   = [data.aws_caller_identity.current.account_id]
+    }
+
+    condition {
+      test     = "ArnLike"
+      variable = "aws:SourceArn"
+      values   = ["arn:aws:budgets::${data.aws_caller_identity.current.account_id}:*"]
+    }
+  }
+}
+
+resource "aws_sns_topic_policy" "this" {
+  count = var.allow_budgets_publish ? 1 : 0
+
+  arn    = aws_sns_topic.this.arn
+  policy = data.aws_iam_policy_document.topic[0].json
 }
 
 resource "aws_sns_topic_subscription" "email" {
