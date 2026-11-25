@@ -9,6 +9,12 @@ variable "emails" {
   default     = []
 }
 
+variable "allow_budgets_publish" {
+  description = "Let AWS Budgets publish to the topic (topic policy and KMS key policy statements), so budget alerts such as the service-budget module can reach it. Setting it replaces the topic's default policy with an equivalent one plus the Budgets statement."
+  type        = bool
+  default     = false
+}
+
 variable "alb_arn_suffix" {
   description = "ARN suffix of the ALB (alb module output). Null skips the load balancer alarms."
   type        = string

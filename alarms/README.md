@@ -43,6 +43,7 @@ Each email address gets a **confirmation email from AWS**. Alerts do not arrive 
 | `emails` | Subscribers | `[]` |
 | `alb_arn_suffix`, `target_group_arn_suffixes` | Load balancer alarms | `null`, `{}` |
 | `enable_alb_alarms` | Set `true` when the load balancer is created in the same apply as the alarms (otherwise the first plan fails with "Invalid count argument") | `null` (on when `alb_arn_suffix` is set) |
+| `allow_budgets_publish` | `true` lets AWS Budgets publish to the topic (topic policy plus KMS key statement), for budget alerts sent to this topic | `false` |
 | `ecs_services` | Services to watch | `{}` |
 | `rds_instance_ids` | Databases to watch | `[]` |
 | `*_threshold` | Alarm thresholds | 10 / 85 / 85 / 80 / 5 GiB / 80 |
