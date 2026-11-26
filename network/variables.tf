@@ -42,6 +42,17 @@ variable "single_nat_gateway" {
   default     = true
 }
 
+variable "nat_eip_allocation_ids" {
+  description = "Allocation IDs of existing Elastic IPs to use for the NAT gateway(s), one per NAT (1 when single_nat_gateway is true, otherwise az_count). Leave empty to let the module create its own EIPs. Use this when the public IP must survive a NAT rebuild (for example a third-party allow-list): create the EIP outside the module with prevent_destroy."
+  type        = list(string)
+  default     = []
+
+  validation {
+    condition     = alltrue([for id in var.nat_eip_allocation_ids : can(regex("^eipalloc-[0-9a-f]+$", id))])
+    error_message = "Each nat_eip_allocation_ids entry must be an EIP allocation ID (eipalloc-...)."
+  }
+}
+
 variable "enable_s3_gateway_endpoint" {
   description = "Create the free S3 gateway endpoint on all route tables."
   type        = bool

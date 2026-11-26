@@ -44,8 +44,8 @@ output "isolated_route_table_id" {
 }
 
 output "nat_public_ips" {
-  description = "Public IPs of the NAT gateways (empty when NAT is disabled)."
-  value       = aws_eip.nat[*].public_ip
+  description = "Public IPs of the NAT gateways, module-owned or external (empty when NAT is disabled)."
+  value       = local.create_nat_eips ? aws_eip.nat[*].public_ip : data.aws_eip.external_nat[*].public_ip
 }
 
 output "s3_endpoint_id" {

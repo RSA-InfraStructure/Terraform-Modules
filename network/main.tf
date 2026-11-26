@@ -17,7 +17,8 @@ locals {
   private_cidrs  = [for i in range(var.az_count) : cidrsubnet(var.vpc_cidr, var.subnet_newbits, i + 4)]
   isolated_cidrs = [for i in range(var.az_count) : cidrsubnet(var.vpc_cidr, var.subnet_newbits, i + 8)]
 
-  nat_count = var.enable_nat_gateway ? (var.single_nat_gateway ? 1 : var.az_count) : 0
+  nat_count       = var.enable_nat_gateway ? (var.single_nat_gateway ? 1 : var.az_count) : 0
+  create_nat_eips = length(var.nat_eip_allocation_ids) == 0
 }
 
 ################################################################################
@@ -93,8 +94,10 @@ resource "aws_subnet" "isolated" {
 # NAT gateways (optional)
 ################################################################################
 
+# Module-owned Elastic IPs, created only when no external allocation IDs are given. Pass
+# nat_eip_allocation_ids to keep the public IP outside this module (it then survives a NAT rebuild).
 resource "aws_eip" "nat" {
-  count = local.nat_count
+  count = local.create_nat_eips ? local.nat_count : 0
 
   domain = "vpc"
 
@@ -106,12 +109,26 @@ resource "aws_eip" "nat" {
 resource "aws_nat_gateway" "this" {
   count = local.nat_count
 
-  allocation_id = aws_eip.nat[count.index].id
+  allocation_id = local.create_nat_eips ? aws_eip.nat[count.index].id : var.nat_eip_allocation_ids[count.index]
   subnet_id     = aws_subnet.public[count.index].id
 
   tags = merge(var.tags, { Name = "${var.name}-nat-${count.index}" })
 
   depends_on = [aws_internet_gateway.this]
+
+  lifecycle {
+    precondition {
+      condition     = length(var.nat_eip_allocation_ids) == 0 || length(var.nat_eip_allocation_ids) == local.nat_count
+      error_message = "nat_eip_allocation_ids must be empty or have exactly one ID per NAT gateway (1 when single_nat_gateway is true, otherwise az_count)."
+    }
+  }
+}
+
+# Public IPs of externally managed Elastic IPs (only read when nat_eip_allocation_ids is set).
+data "aws_eip" "external_nat" {
+  count = local.create_nat_eips ? 0 : length(var.nat_eip_allocation_ids)
+
+  id = var.nat_eip_allocation_ids[count.index]
 }
 
 ################################################################################
